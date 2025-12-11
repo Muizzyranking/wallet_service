@@ -44,5 +44,4 @@ def create_user_wallet(sender, instance, created, **kwargs):
     if created:
         from apps.wallet.models import Wallet
 
-        UserProfile.objects.get_or_create(user=instance)
         Wallet.objects.get_or_create(user=instance)
