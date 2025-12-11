@@ -21,12 +21,7 @@ class Wallet(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wallet"
     )
-    balance = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        validators=[MinValueValidator(Decimal("0.00"))],
-    )
+    balance = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -62,7 +57,7 @@ class Transaction(models.Model):
 
     transaction_type = models.CharField(max_length=20, choices=TransactionType.choices)
 
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.BigIntegerField()
     status = models.CharField(
         max_length=20,
         choices=TransactionStatus.choices,

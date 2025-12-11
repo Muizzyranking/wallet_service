@@ -1,8 +1,10 @@
+import logging
+from typing import Dict, Optional
+
 import httpx
 from django.conf import settings
-from typing import Dict, Optional
-import logging
-from .exceptions import PaystackAPIException
+
+from apps.core.exceptions import APIException
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +56,16 @@ class PaystackService:
                 data = response.json()
 
                 if not data.get("status"):
-                    raise PaystackAPIException(f"Paystack error: {data.get('message')}")
+                    raise APIException(
+                        f"Paystack error: {data.get('message')}", status_code=400
+                    )
 
                 logger.info(f"Paystack transaction initialized: {reference}")
                 return data["data"]
 
         except httpx.HTTPError as e:
             logger.error(f"Paystack API error: {str(e)}")
-            raise PaystackAPIException(f"Failed to initialize transaction: {str(e)}")
+            raise APIException(f"Paystack API error: {str(e)}", status_code=500)
 
     async def verify_transaction(self, reference: str) -> Dict:
         """
@@ -83,14 +87,16 @@ class PaystackService:
                 data = response.json()
 
                 if not data.get("status"):
-                    raise PaystackAPIException(f"Paystack error: {data.get('message')}")
+                    raise APIException(
+                        f"Paystack error: {data.get('message')}", status_code=400
+                    )
 
                 logger.info(f"Paystack transaction verified: {reference}")
                 return data["data"]
 
         except httpx.HTTPError as e:
             logger.error(f"Paystack verification error: {str(e)}")
-            raise PaystackAPIException(f"Failed to verify transaction: {str(e)}")
+            raise APIException(f"Paystack API error: {str(e)}", status_code=500)
 
     @staticmethod
     def convert_to_kobo(amount: float) -> int:

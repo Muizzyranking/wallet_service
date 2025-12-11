@@ -1,9 +1,12 @@
-import hmac
 import hashlib
+import hmac
+import logging
+
 from django.conf import settings
 from django.http import HttpRequest
-import logging
-from .exceptions import PaystackWebhookException
+
+from apps.core.exceptions import APIException
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,7 @@ class PaystackWebhookValidator:
 
         if not signature:
             logger.warning("Missing Paystack signature in webhook")
-            raise PaystackWebhookException("Missing signature")
+            raise APIException("Missing signature", status_code=400)
 
         # Get request body
         body = request.body
@@ -42,7 +45,7 @@ class PaystackWebhookValidator:
 
         if not is_valid:
             logger.warning("Invalid Paystack webhook signature")
-            raise PaystackWebhookException("Invalid signature")
+            raise APIException("Invalid signature", status_code=400)
 
         logger.info("Paystack webhook signature validated successfully")
         return True

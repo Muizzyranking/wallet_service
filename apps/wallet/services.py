@@ -8,13 +8,9 @@ from django.contrib.auth.models import User
 from django.db import transaction
 
 from apps.authentication.models import UserProfile
+from apps.core.exceptions import APIException
+from apps.wallet.constants import validate_deposit_amount, validate_transfer_amount
 
-from .exceptions import (
-    DuplicateTransactionException,
-    InsufficientBalanceException,
-    InvalidAmountException,
-    WalletNotFoundException,
-)
 from .models import Transaction, Wallet
 from .paystack import PaystackService
 
@@ -41,7 +37,7 @@ class WalletService:
             wallet = Wallet.objects.get(user=user)
             return wallet.balance
         except Wallet.DoesNotExist:
-            raise WalletNotFoundException("Wallet not found")
+            raise APIException("Wallet not found", status_code=404)
 
     @staticmethod
     def generate_transaction_reference() -> str:
@@ -57,8 +53,10 @@ class WalletService:
 
         Returns: (Transaction, authorization_url)
         """
-        if amount <= 0:
-            raise InvalidAmountException("Amount must be greater than 0")
+        try:
+            validate_deposit_amount(amount)
+        except ValueError as e:
+            raise APIException(f"{str(e)}", status_code=400)
 
         await WalletService.get_or_create_wallet(user)
 
@@ -85,7 +83,9 @@ class WalletService:
             access_code=paystack_response.get("access_code"),
         )
 
-        logger.info(f"Deposit initiated for {user.email}: {amount}")
+        logger.info(
+            f"Deposit initiated for {user.email}: {amount} kobo ({amount / 100} NGN)"
+        )
 
         return transaction_obj, paystack_response.get("authorization_url")
 
@@ -101,7 +101,7 @@ class WalletService:
                 reference=reference, transaction_type="deposit"
             )
         except Transaction.DoesNotExist:
-            raise DuplicateTransactionException(f"Transaction not found: {reference}")
+            raise APIException(f"Transaction not found: {reference}", status_code=404)
 
         if txn.status == "success":
             logger.warning(f"Transaction already processed: {reference}")
@@ -126,33 +126,30 @@ class WalletService:
         Transfer funds from one wallet to another
         This is atomic - either both succeed or both fail
         """
-        if amount <= 0:
-            raise InvalidAmountException("Amount must be greater than 0")
+        try:
+            validate_transfer_amount(amount)
+        except ValueError as e:
+            raise APIException(f"{str(e)}", status_code=400)
 
-        # Get sender wallet
         try:
             sender_wallet = Wallet.objects.select_for_update().get(user=sender)
         except Wallet.DoesNotExist:
-            raise WalletNotFoundException("Sender wallet not found")
+            raise APIException("Sender wallet not found", status_code=400)
 
-        # Check balance
         if sender_wallet.balance < amount:
-            raise InsufficientBalanceException("Insufficient balance")
+            raise APIException("Insufficient balance", status_code=400)
 
-        # Find recipient by wallet number
         try:
             recipient_profile = UserProfile.objects.select_related("user").get(
                 wallet_number=recipient_wallet_number
             )
             recipient = recipient_profile.user
         except UserProfile.DoesNotExist:
-            raise WalletNotFoundException("Recipient wallet not found")
+            raise APIException("Recipient wallet number is invalid", status_code=400)
 
-        # Can't transfer to self
         if sender.id == recipient.id:
-            raise InvalidAmountException("Cannot transfer to yourself")
+            raise APIException("Cannot transfer to yourself", status_code=400)
 
-        # Get recipient wallet
         recipient_wallet, _ = Wallet.objects.select_for_update().get_or_create(
             user=recipient
         )
@@ -163,10 +160,8 @@ class WalletService:
         # Debit sender
         sender_wallet.debit(amount)
 
-        # Credit recipient
         recipient_wallet.credit(amount)
 
-        # Create transaction record for sender
         txn = Transaction.objects.create(
             user=sender,
             reference=reference,
@@ -210,4 +205,4 @@ class WalletService:
             print(txn)
             return txn
         except Transaction.DoesNotExist:
-            raise DuplicateTransactionException(f"Transaction not found: {reference}")
+            raise APIException(f"Transaction not found: {reference}", status_code=404)
