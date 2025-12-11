@@ -8,6 +8,7 @@ from ninja import Router
 from ninja.responses import Response
 
 from apps.api_keys.permissions import PermissionValidator
+from apps.core.exceptions import APIException
 
 from .schemas import (
     BalanceSchema,
@@ -68,6 +69,8 @@ async def deposit(request: HttpRequest, payload: DepositSchema):
             "amount": transaction.amount,
         }
 
+    except APIException:
+        raise
     except ValueError as e:
         logger.error(f"Deposit error: {str(e)}")
         return Response({"detail": str(e)}, status=400)
@@ -255,6 +258,8 @@ async def get_transactions(request: HttpRequest):
             ],
             "count": len(transactions),
         }
+    except APIException:
+        raise
 
     except Exception as e:
         logger.error(f"Transaction history error: {str(e)}")

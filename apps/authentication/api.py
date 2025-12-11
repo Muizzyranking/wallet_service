@@ -6,6 +6,7 @@ from ninja import Router
 from ninja.responses import Response
 
 from apps.core.auth import jwt_auth
+from apps.core.exceptions import APIException
 
 from .schemas import (
     ErrorSchema,
@@ -82,7 +83,8 @@ async def google_callback(request: HttpRequest, code: str, state: str = None):
             "token_type": "Bearer",
             "user": user_data,
         }
-
+    except APIException:
+        raise
     except ValueError as e:
         logger.error(f"ValueError in Google callback: {str(e)}", exc_info=True)
         return Response({"detail": str(e)}, status=400)
@@ -129,6 +131,9 @@ async def get_current_user(request: HttpRequest):
 
         user_profile = await get_user_profile()
         return user_profile
+
+    except APIException:
+        raise
 
     except Exception as e:
         logger.error(f"Error fetching user profile: {str(e)}", exc_info=True)

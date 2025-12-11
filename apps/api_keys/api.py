@@ -6,6 +6,8 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.responses import Response
 
+from apps.core.exceptions import APIException
+
 from .schemas import (
     APIKeyInfoSchema,
     APIKeyResponseSchema,
@@ -51,7 +53,8 @@ def create_api_key(request: HttpRequest, payload: CreateAPIKeySchema):
             "name": api_key.name,
             "permissions": api_key.permissions,
         }
-
+    except APIException:
+        raise
     except ValueError as e:
         logger.error(f"Error creating API key: {str(e)}")
         return Response({"detail": str(e)}, status=400)
@@ -87,6 +90,8 @@ def rollover_api_key(request: HttpRequest, payload: RolloverAPIKeySchema):
             "name": new_key.name,
             "permissions": new_key.permissions,
         }
+    except APIException:
+        raise
 
     except ValueError as e:
         logger.error(f"Error rolling over API key: {str(e)}")
@@ -142,7 +147,8 @@ def revoke_api_key(request: HttpRequest, payload: RevokeAPIKeySchema):
         APIKeyService.revoke_api_key(user=request.auth, key_id=payload.key_id)
 
         return {"message": "API key revoked successfully"}
-
+    except APIException:
+        raise
     except ValueError as e:
         logger.error(f"Error revoking API key: {str(e)}")
         return Response({"detail": str(e)}, status=400)
