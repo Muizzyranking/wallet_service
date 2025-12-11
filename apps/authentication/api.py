@@ -63,8 +63,8 @@ async def google_callback(request: HttpRequest, code: str, state: str = None):
         logger.info(f"User {'created' if created else 'found'}: {user.email}")
 
         # Generate JWT tokens
-        tokens = generate_tokens_for_user(user)
-        user_data = get_user_data(user)
+        tokens = await generate_tokens_for_user(user)
+        user_data = await get_user_data(user)
 
         logger.info(f"User {'created' if created else 'logged in'}: {user.email}")
 
