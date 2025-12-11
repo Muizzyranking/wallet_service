@@ -83,7 +83,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = "http://localhost:8000/api/auth/google/callback"
+GOOGLE_REDIRECT_URI = config(
+    "GOOGLE_REDIRECT_URI", default="http://localhost:8000/api/auth/google/callback"
+)
 
 NINJA_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
