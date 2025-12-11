@@ -70,7 +70,7 @@ class WalletService:
             )
         except Exception as e:
             logger.error(f"Failed to initialize Paystack transaction: {str(e)}")
-            raise
+            raise APIException("Failed to initiate deposit", status_code=500)
 
         transaction_obj = await sync_to_async(Transaction.objects.create)(
             user=user,

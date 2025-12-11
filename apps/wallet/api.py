@@ -58,25 +58,15 @@ async def deposit(request: HttpRequest, payload: DepositSchema):
     if perm_check:
         return perm_check
 
-    try:
-        transaction, authorization_url = await WalletService.initiate_deposit(
-            user=request.auth, amount=payload.amount
-        )
+    transaction, authorization_url = await WalletService.initiate_deposit(
+        user=request.auth, amount=payload.amount
+    )
 
-        return {
-            "reference": transaction.reference,
-            "authorization_url": authorization_url,
-            "amount": transaction.amount,
-        }
-
-    except APIException:
-        raise
-    except ValueError as e:
-        logger.error(f"Deposit error: {str(e)}")
-        return Response({"detail": str(e)}, status=400)
-    except Exception as e:
-        logger.error(f"Unexpected deposit error: {str(e)}", exc_info=True)
-        return Response({"detail": "Failed to initiate deposit"}, status=400)
+    return {
+        "reference": transaction.reference,
+        "authorization_url": authorization_url,
+        "amount": transaction.amount,
+    }
 
 
 @router.post(
@@ -200,26 +190,18 @@ async def transfer(request: HttpRequest, payload: TransferSchema):
     if perm_check:
         return perm_check
 
-    try:
-        transaction = await WalletService.transfer_funds(
-            sender=request.auth,
-            recipient_wallet_number=payload.wallet_number,
-            amount=payload.amount,
-        )
+    transaction = await WalletService.transfer_funds(
+        sender=request.auth,
+        recipient_wallet_number=payload.wallet_number,
+        amount=payload.amount,
+    )
 
-        return {
-            "status": "success",
-            "message": "Transfer completed",
-            "reference": transaction.reference,
-            "amount": transaction.amount,
-        }
-
-    except ValueError as e:
-        logger.error(f"Transfer error: {str(e)}")
-        return Response({"detail": str(e)}, status=400)
-    except Exception as e:
-        logger.error(f"Unexpected transfer error: {str(e)}", exc_info=True)
-        return Response({"detail": "Transfer failed"}, status=400)
+    return {
+        "status": "success",
+        "message": "Transfer completed",
+        "reference": transaction.reference,
+        "amount": transaction.amount,
+    }
 
 
 @router.get(
@@ -258,9 +240,6 @@ async def get_transactions(request: HttpRequest):
             ],
             "count": len(transactions),
         }
-    except APIException:
-        raise
-
     except Exception as e:
         logger.error(f"Transaction history error: {str(e)}")
         return Response({"detail": "Failed to fetch transactions"}, status=400)
