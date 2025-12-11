@@ -2,6 +2,19 @@ from ninja import Schema
 from typing import Optional
 
 
+class UserProfileSchema(Schema):
+    """Complete user profile with wallet details"""
+
+    id: int
+    email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    wallet_number: str
+    profile_picture: Optional[str] = None
+    wallet_balance: int  # In kobo
+    created_at: str
+
+
 class GoogleAuthURLSchema(Schema):
     authorization_url: str
 

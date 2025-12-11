@@ -1,10 +1,18 @@
 import logging
 
+from asgiref.sync import sync_to_async
 from django.http import HttpRequest
 from ninja import Router
 from ninja.responses import Response
 
-from .schemas import ErrorSchema, GoogleAuthURLSchema, TokenResponseSchema
+from apps.core.auth import jwt_auth
+
+from .schemas import (
+    ErrorSchema,
+    GoogleAuthURLSchema,
+    TokenResponseSchema,
+    UserProfileSchema,
+)
 from .services import GoogleOAuthService
 from .utils import generate_tokens_for_user, get_user_data
 
@@ -81,3 +89,47 @@ async def google_callback(request: HttpRequest, code: str, state: str = None):
     except Exception as e:
         logger.error(f"Error in Google callback: {str(e)}", exc_info=True)
         return Response({"detail": f"Authentication failed: {str(e)}"}, status=400)
+
+
+@router.get(
+    "/me",
+    response={200: UserProfileSchema, 401: ErrorSchema},
+    auth=jwt_auth,
+    summary="Get Current User Profile",
+)
+async def get_current_user(request: HttpRequest):
+    """
+    Get current authenticated user's profile with wallet details
+
+    - Requires JWT authentication
+    - Returns user info, wallet number, and balance
+    """
+    try:
+
+        @sync_to_async
+        def get_user_profile():
+            from apps.wallet.models import Wallet
+
+            user = request.auth
+            profile = user.profile
+
+            # Get or create wallet
+            wallet, _ = Wallet.objects.get_or_create(user=user)
+
+            return {
+                "id": user.id,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "wallet_number": profile.wallet_number,
+                "profile_picture": profile.profile_picture,
+                "wallet_balance": wallet.balance,  # In kobo
+                "created_at": user.date_joined.isoformat(),
+            }
+
+        user_profile = await get_user_profile()
+        return user_profile
+
+    except Exception as e:
+        logger.error(f"Error fetching user profile: {str(e)}", exc_info=True)
+        return Response({"detail": "Failed to fetch user profile"}, status=400)
