@@ -8,7 +8,6 @@ from ninja import Router
 from ninja.responses import Response
 
 from apps.api_keys.permissions import PermissionValidator
-from apps.core.exceptions import APIException
 
 from .schemas import (
     BalanceSchema,
